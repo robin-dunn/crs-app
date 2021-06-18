@@ -1,0 +1,23 @@
+{
+  "type": "FeatureCollection",
+  "name": "example_vector",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "epsg:4326"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -1.7071248,
+          52.5043046
+        ]
+      }
+    }
+  ]
+}
