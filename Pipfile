@@ -8,9 +8,11 @@ invoke = "*"
 
 [packages]
 flask = "*"
+flask-cors = "*"
 geojson = "*"
 pyproj = "*"
 passlib = "*"
+jwt = "*"
 
 [requires]
 python_version = "3.9"

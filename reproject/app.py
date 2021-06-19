@@ -1,11 +1,16 @@
 import functools
 
-from flask import Flask
+from flask import Flask, jsonify
+from flask_cors import CORS, cross_origin
 import passlib.hash
 import pyproj
 import geojson
 
 app = Flask(__name__)
+cors = CORS(app)
+
+app.config['CORS_HEADERS'] = 'Content-Type'
+app.config['SECRET_KEY']='004f2af45d3a4e161a7dd2d17fdae47f'
 
 # There's username and passwords already in db.sqlite:
 #   user1 / password1
@@ -19,9 +24,15 @@ def verify_password(password: str, encypted_password: str) -> str:
   return passlib.hash.pbkdf2_sha256.verify(password, encypted_password)
 
 
-@app.route('/login')
+@app.route('/login', methods = ['POST'])
+@cross_origin("*")
 def login():
-    raise NotImplementedError('Implement Me!')
+  # token = jwt.encode({
+  #   'public_id' : user.public_id, 
+  #   'exp' : datetime.datetime.utcnow() + datetime.timedelta(minutes=45)
+  #   }, app.config['SECRET_KEY'], "HS256")
+ 
+  return jsonify(token="OK")
 
 
 @app.route('/projections')
@@ -70,4 +81,4 @@ def vector_reproject():
 if __name__ == '__main__':
     # Bind on all interfaces so that we can easily
     # map ports when running in a docker container
-    app.run(host= '0.0.0.0')
+    app.run(host= '0.0.0.0', debug=True)
