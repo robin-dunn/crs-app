@@ -12,7 +12,7 @@ flask-cors = "*"
 geojson = "*"
 pyproj = "*"
 passlib = "*"
-jwt = "*"
+pyjwt = "*"
 
 [requires]
 python_version = "3.9"

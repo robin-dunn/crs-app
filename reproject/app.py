@@ -1,10 +1,12 @@
 import functools
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS, cross_origin
 import passlib.hash
 import pyproj
 import geojson
+import datetime
+import jwt
 
 app = Flask(__name__)
 cors = CORS(app)
@@ -27,12 +29,16 @@ def verify_password(password: str, encypted_password: str) -> str:
 @app.route('/login', methods = ['POST'])
 @cross_origin("*")
 def login():
-  # token = jwt.encode({
-  #   'public_id' : user.public_id, 
-  #   'exp' : datetime.datetime.utcnow() + datetime.timedelta(minutes=45)
-  #   }, app.config['SECRET_KEY'], "HS256")
- 
-  return jsonify(token="OK")
+  print(request.json)
+  # TODO: get user from database
+  token = jwt.encode({
+    "iss" : "GSI-CRS-APP",
+    "iat" : datetime.datetime.utcnow(),
+    "exp" : datetime.datetime.utcnow() + datetime.timedelta(minutes=45),
+    "sub" : request.json["username"] },
+    app.config['SECRET_KEY'],
+    "HS256")
+  return jsonify(token=token)
 
 
 @app.route('/projections')
