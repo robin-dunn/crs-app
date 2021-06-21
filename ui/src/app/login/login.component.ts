@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, OnInit } from '@angular/core';
+import * as moment from 'moment';
 
 @Component({
   selector: 'app-login',
@@ -18,10 +19,36 @@ export class LoginComponent implements OnInit {
 
   onLoginSubmit(event){
     event.preventDefault();
-    this.http.post("http://localhost:5000/login", { username: this.username, password: this.password })
+    this.http.post("http://localhost:5000/login", { username: this.username, password: this.password }, {observe: 'response'})
       .subscribe(response => {
-        alert(response);
+        if (response.status === 200){
+          this.setSession(response);
+        }
       });
   }
 
+  setSession(authResult){
+    const expiresAt = moment().add(authResult.expiresIn,'second');
+    localStorage.setItem('crs_app_auth_token', authResult.idToken);
+    localStorage.setItem("crs_app_auth_token_expires_at", JSON.stringify(expiresAt.valueOf()));
+  }
+
+    logout() {
+        localStorage.removeItem("crs_app_auth_token");
+        localStorage.removeItem("crs_app_auth_token_expires_at");
+    }
+
+    public isLoggedIn() {
+        return moment().isBefore(this.getExpiration());
+    }
+
+    isLoggedOut() {
+        return !this.isLoggedIn();
+    }
+
+    getExpiration() {
+        const expiration = localStorage.getItem("crs_app_auth_token_expires_at");
+        const expiresAt = JSON.parse(expiration);
+        return moment(expiresAt);
+    }
 }
