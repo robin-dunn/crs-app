@@ -7,6 +7,8 @@ import pyproj
 import geojson
 import datetime
 import jwt
+import sqlite3
+import os
 
 app = Flask(__name__)
 cors = CORS(app)
@@ -18,6 +20,9 @@ app.config['SECRET_KEY']='004f2af45d3a4e161a7dd2d17fdae47f'
 #   user1 / password1
 #   user2 / password2
 
+def get_db_connection():
+  return sqlite3.connect(os.path.dirname(__file__) + '/../db.sqlite')
+
 def encrypt_password(password: str) -> str:
   return passlib.hash.pbkdf2_sha256.hash(password)
 
@@ -25,25 +30,35 @@ def encrypt_password(password: str) -> str:
 def verify_password(password: str, encypted_password: str) -> str:
   return passlib.hash.pbkdf2_sha256.verify(password, encypted_password)
 
-
 @app.route('/login', methods = ['POST'])
 @cross_origin("*")
 def login():
-  print(request.json)
-  # TODO: get user from database
+  username = request.json["username"]
+  conn = get_db_connection()
+  cur = conn.cursor()
+  cur.execute("select encrypted_password from user where username = ?", [username])
+  user_row = cur.fetchone()
+
+  if (user_row == None or verify_password(request.json["password"], user_row[0]) == False):
+    return {"message": "Invalid username or password"}, 401
+
   token = jwt.encode({
     "iss" : "GSI-CRS-APP",
     "iat" : datetime.datetime.utcnow(),
     "exp" : datetime.datetime.utcnow() + datetime.timedelta(minutes=45),
-    "sub" : request.json["username"] },
+    "sub" : username },
     app.config['SECRET_KEY'],
     "HS256")
-  return jsonify(token=token)
+  return jsonify(access_token=token)
 
 
-@app.route('/projections')
+@app.route('/projections', methods = ["GET"])
+@cross_origin("*")
 def projections():
-    raise NotImplementedError('Implement Me!')
+  conn = get_db_connection()
+  cur = conn.cursor()
+  cur.execute("select epsg_code from crs")
+  return jsonify(cur.fetchall())
 
 
 @app.route('/vector/reproject')
