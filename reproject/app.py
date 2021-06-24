@@ -55,10 +55,23 @@ def login():
 @app.route('/projections', methods = ["GET"])
 @cross_origin("*")
 def projections():
+  authHeader = request.headers.get('Authorization')
+  print(authHeader)
+  #TODO: get user id from auth token
   conn = get_db_connection()
   cur = conn.cursor()
-  cur.execute("select epsg_code from crs")
-  return jsonify(cur.fetchall())
+  cur.execute("""
+  SELECT
+  crs.epsg_code
+FROM user
+JOIN user_crs
+  ON user.user_id = user_crs.user_id
+JOIN crs
+  ON crs.crs_id = user_crs.crs_id
+  where user.user_id = ?
+  """, [1])
+  items = map(lambda item: item[0], cur.fetchall())
+  return jsonify(list(items))
 
 
 @app.route('/vector/reproject')

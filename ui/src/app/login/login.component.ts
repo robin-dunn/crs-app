@@ -23,7 +23,7 @@ export class LoginComponent implements OnInit {
     this.http.post("http://localhost:5000/login", { username: this.username, password: this.password }, {observe: 'response'})
       .subscribe(response => {
         if (response.status === 200){
-          this.setSession(response);
+          this.setSession(response.body);
           this.router.navigate(["/home"]);
         }
       });
@@ -31,7 +31,7 @@ export class LoginComponent implements OnInit {
 
   setSession(authResult){
     const expiresAt = moment().add(authResult.expiresIn,'second');
-    localStorage.setItem('crs_app_auth_token', authResult.idToken);
+    localStorage.setItem('crs_app_auth_token', authResult.access_token);
     localStorage.setItem("crs_app_auth_token_expires_at", JSON.stringify(expiresAt.valueOf()));
   }
 
