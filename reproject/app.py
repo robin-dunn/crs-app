@@ -36,17 +36,17 @@ def login():
   username = request.json["username"]
   conn = get_db_connection()
   cur = conn.cursor()
-  cur.execute("select encrypted_password from user where username = ?", [username])
+  cur.execute("select user_id, encrypted_password from user where username = ?", [username])
   user_row = cur.fetchone()
 
-  if (user_row == None or verify_password(request.json["password"], user_row[0]) == False):
+  if (user_row == None or verify_password(request.json["password"], user_row[1]) == False):
     return {"message": "Invalid username or password"}, 401
 
   token = jwt.encode({
     "iss" : "GSI-CRS-APP",
     "iat" : datetime.datetime.utcnow(),
     "exp" : datetime.datetime.utcnow() + datetime.timedelta(minutes=45),
-    "sub" : username },
+    "sub" : user_row[0] },
     app.config['SECRET_KEY'],
     "HS256")
   return jsonify(access_token=token)
@@ -56,8 +56,9 @@ def login():
 @cross_origin("*")
 def projections():
   authHeader = request.headers.get('Authorization')
-  print(authHeader)
-  #TODO: get user id from auth token
+  authToken = authHeader.split()[1]
+  decodedToken = jwt.decode(authToken, app.config["SECRET_KEY"], "HS256")
+  
   conn = get_db_connection()
   cur = conn.cursor()
   cur.execute("""
@@ -69,7 +70,7 @@ JOIN user_crs
 JOIN crs
   ON crs.crs_id = user_crs.crs_id
   where user.user_id = ?
-  """, [1])
+  """, [decodedToken['sub']])
   items = map(lambda item: item[0], cur.fetchall())
   return jsonify(list(items))
 

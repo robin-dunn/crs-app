@@ -8,12 +8,13 @@ import { Component, OnInit } from '@angular/core';
 })
 export class HomeComponent implements OnInit {
 
+  projections: string[];
+
   constructor(private http:HttpClient) { }
 
   ngOnInit(): void {
     this.http.get("http://localhost:5000/projections").subscribe(r => {
-      console.log("proj", r);
-      // TODO: render HTML list or table
+      this.projections = r as string[];
     });
   }
 
