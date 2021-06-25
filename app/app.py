@@ -1,6 +1,6 @@
 import functools
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS, cross_origin
 import passlib.hash
 import pyproj
@@ -9,6 +9,7 @@ import datetime
 import jwt
 import sqlite3
 import os
+import os.path
 
 app = Flask(__name__)
 cors = CORS(app)
@@ -26,9 +27,18 @@ def get_db_connection():
 def encrypt_password(password: str) -> str:
   return passlib.hash.pbkdf2_sha256.hash(password)
 
-
 def verify_password(password: str, encypted_password: str) -> str:
   return passlib.hash.pbkdf2_sha256.verify(password, encypted_password)
+
+@app.route('/', defaults={'path': ''}, methods=["GET"])
+@app.route('/<string:path>', methods=["GET"])
+@app.route('/<path:path>', methods=["GET"])
+def static_proxy(path):
+  public_dir = os.path.dirname(os.path.abspath(__file__)) + "/../ui/dist/crs-app/";
+  if os.path.isfile(public_dir + path):
+      return send_from_directory(public_dir, path)
+  else:
+      return send_from_directory(public_dir, "index.html")
 
 @app.route('/login', methods = ['POST'])
 @cross_origin("*")
@@ -62,13 +72,10 @@ def projections():
   conn = get_db_connection()
   cur = conn.cursor()
   cur.execute("""
-  SELECT
-  crs.epsg_code
-FROM user
-JOIN user_crs
-  ON user.user_id = user_crs.user_id
-JOIN crs
-  ON crs.crs_id = user_crs.crs_id
+  select crs.epsg_code
+  from
+  user join user_crs on user.user_id = user_crs.user_id
+  join crs on crs.crs_id = user_crs.crs_id
   where user.user_id = ?
   """, [decodedToken['sub']])
   items = map(lambda item: item[0], cur.fetchall())
