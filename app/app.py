@@ -68,6 +68,7 @@ def projections():
   authHeader = request.headers.get('Authorization')
   authToken = authHeader.split()[1]
   decodedToken = jwt.decode(authToken, app.config["SECRET_KEY"], "HS256")
+  #TODO: check auth token valid
   
   conn = get_db_connection()
   cur = conn.cursor()
@@ -82,45 +83,40 @@ def projections():
   return jsonify(list(items))
 
 
-@app.route('/vector/reproject')
+@app.route('/vector/reproject', methods=["POST"])
 def vector_reproject():
 
-    raise NotImplementedError('Implement Me!')
+  #TODO: check auth token valid
+  requestBody = request.get_json()
+  target_crs = requestBody["targetProjection"]
+  geometry = geojson.loads(geojson.dumps(requestBody["geojson"]))
 
-    ## Some sample code to reproject a geojson
+  source_crs = geometry['crs']['properties']['name']
 
-    # Target CRS to be read from HTTP request
-    target_crs = 'epsg:3857'
+  transformer = pyproj.Transformer.from_crs(
+    source_crs,
+    target_crs,
+    always_xy=True,
+  )
 
-    # GeoJSON to be read from HTTP request
-    with open('example_vector.geojson') as geojson_file:
-      geometry = geojson.load(geojson_file)
-
-    source_crs = geometry['crs']['properties']['name']
-
-    transformer = pyproj.Transformer.from_crs(
-      source_crs,
-      target_crs,
-      always_xy=True,
-    )
-
-    reprojected = {
-      **geojson.utils.map_tuples(
-        lambda c: transformer.transform(c[0], c[1]),
-        geometry,
-      ),
-      **{
-        "crs": {
-          "type": "name",
-          "properties": {
-            "name": target_crs
-          }
+  reprojected = {
+    **geojson.utils.map_tuples(
+      lambda c: transformer.transform(c[0], c[1]),
+      geometry,
+    ),
+    **{
+      "crs": {
+        "type": "name",
+        "properties": {
+          "name": target_crs
         }
       }
     }
+  }
+  return reprojected
 
 
 if __name__ == '__main__':
-    # Bind on all interfaces so that we can easily
-    # map ports when running in a docker container
-    app.run(host= '0.0.0.0', debug=True)
+  # Bind on all interfaces so that we can easily
+  # map ports when running in a docker container
+  app.run(host= '0.0.0.0', debug=True)

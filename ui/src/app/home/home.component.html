@@ -1,5 +1,47 @@
-<p>Projections:</p>
+<p>Available Projections:</p>
 
 <ul>
   <li *ngFor="let proj of projections">{{proj}}</li>
 </ul>
+
+<p>Reproject:</p>
+
+<div class="reproject-controls">
+  <div style="border: 1px solid black;">
+    <mat-tab-group>
+      <mat-tab label="File Input">
+        <div style="padding: 5px;">
+          <div>Choose file containing vector (.geojson)</div>
+          <input id="geojson-file" type="file">
+        </div>
+      </mat-tab>
+      <mat-tab label="Text Input">
+        <div style="display: flex; flex-direction: column; flex: 1;overflow: hidden;">
+          <textarea cols="41" rows="25" [(ngModel)]="geojson"></textarea>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  </div>
+
+  <div>
+    <div style="margin: 0 10px;">
+      <label>Target projection:</label>
+      <select class="select-target-projection" [(ngModel)]="targetProjection">
+        <option *ngFor="let proj of projections" value="{{proj}}">{{proj}}</option>
+      </select>
+    </div>
+    <div style="text-align: center;margin-top: 10px;">
+      <button class="btn-reproject" mat-button color="primary" (click)="submitReproject()">Reproject</button>
+    </div>
+  </div>
+
+  <div style="border: 1px solid black; overflow: hidden;">
+    <mat-tab-group>
+      <mat-tab label="Result">
+        <div style="display: flex; flex-direction: column; flex: 1;overflow: hidden;">
+          <textarea cols="41" rows="25" [(ngModel)]="geojsonReprojected"></textarea>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  </div>
+</div>

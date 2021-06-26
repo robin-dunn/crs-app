@@ -1,0 +1,24 @@
+.reproject-controls {
+  display: flex;
+}
+
+.mat-tab-body {
+  padding: 5px;
+}
+
+.select-target-projection {
+  display: inline-block;
+  margin-left: 5px;
+}
+
+.btn-reproject {
+  border: 1px solid grey;
+  border-radius: 4px;
+}
+
+textarea {
+  width: 100%;
+  height: 100%;
+  border: none;
+  padding: 0;
+}
