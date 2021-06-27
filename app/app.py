@@ -30,6 +30,15 @@ def encrypt_password(password: str) -> str:
 def verify_password(password: str, encypted_password: str) -> str:
   return passlib.hash.pbkdf2_sha256.verify(password, encypted_password)
 
+def check_auth(request):
+  try:
+    authHeader = request.headers.get('Authorization')
+    authToken = authHeader.split()[1]
+    decodedToken = jwt.decode(authToken, app.config["SECRET_KEY"], "HS256")
+    return decodedToken
+  except jwt.ExpiredSignatureError:
+    return False
+
 @app.route('/', defaults={'path': ''}, methods=["GET"])
 @app.route('/<string:path>', methods=["GET"])
 @app.route('/<path:path>', methods=["GET"])
@@ -65,10 +74,8 @@ def login():
 @app.route('/projections', methods = ["GET"])
 @cross_origin("*")
 def projections():
-  authHeader = request.headers.get('Authorization')
-  authToken = authHeader.split()[1]
-  decodedToken = jwt.decode(authToken, app.config["SECRET_KEY"], "HS256")
-  #TODO: check auth token valid
+  decodedToken = check_auth(request)
+  if (decodedToken == False): return jsonify({'message':'Unauthorised'}), 401
   
   conn = get_db_connection()
   cur = conn.cursor()
@@ -85,8 +92,9 @@ def projections():
 
 @app.route('/vector/reproject', methods=["POST"])
 def vector_reproject():
+  decodedToken = check_auth(request)
+  if (decodedToken == False): return jsonify({'message':'Unauthorised'}), 401
 
-  #TODO: check auth token valid
   requestBody = request.get_json()
   target_crs = requestBody["targetProjection"]
   geometry = geojson.loads(geojson.dumps(requestBody["geojson"]))

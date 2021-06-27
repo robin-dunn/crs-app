@@ -50,6 +50,7 @@ export class HomeComponent implements OnInit {
       targetProjection: this.targetProjection,
       geojson: JSON.parse(this.geojson)
     };
+    this.geojsonReprojected = "";
     this.http.post("http://localhost:5000/vector/reproject", requestBody).subscribe(r => {
       this.geojsonReprojected = JSON.stringify(r, null, 2);
     });
