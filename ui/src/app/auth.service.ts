@@ -36,7 +36,9 @@ export class AuthService {
   }
 
   getDecodedToken(): any {
-    let base64Url = this.getAuthToken().split('.')[1];
+    let token = this.getAuthToken();
+    if (!token) return null;
+    let base64Url = token.split('.')[1];
     let base64 = base64Url.replace('-', '+').replace('_', '/');
     return JSON.parse(Buffer.from(base64, 'base64').toString('binary'));
   }

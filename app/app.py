@@ -1,5 +1,3 @@
-import functools
-
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS, cross_origin
 import passlib.hash
@@ -90,8 +88,8 @@ def projections():
   return jsonify(list(items))
 
 
-@app.route('/vector/reproject', methods=["POST"])
-def vector_reproject():
+@app.route('/vector/reproject/json', methods=["POST"])
+def vector_reproject_json():
   decodedToken = check_auth(request)
   if (decodedToken == False): return jsonify({'message':'Unauthorised'}), 401
 
@@ -123,6 +121,37 @@ def vector_reproject():
   }
   return reprojected
 
+
+@app.route('/vector/reproject/file', methods=["POST"])
+def vector_reproject_file():
+  decodedToken = check_auth(request)
+  if (decodedToken == False): return jsonify({'message':'Unauthorised'}), 401
+
+  geometry = geojson.load(request.files['file'])
+  target_crs = request.form.get("targetProjection")
+  source_crs = geometry['crs']['properties']['name']
+
+  transformer = pyproj.Transformer.from_crs(
+    source_crs,
+    target_crs,
+    always_xy=True,
+  )
+
+  reprojected = {
+    **geojson.utils.map_tuples(
+      lambda c: transformer.transform(c[0], c[1]),
+      geometry,
+    ),
+    **{
+      "crs": {
+        "type": "name",
+        "properties": {
+          "name": target_crs
+        }
+      }
+    }
+  }
+  return reprojected
 
 if __name__ == '__main__':
   # Bind on all interfaces so that we can easily

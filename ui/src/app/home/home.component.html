@@ -8,11 +8,11 @@
 
 <div class="reproject-controls">
   <div style="border: 1px solid black;">
-    <mat-tab-group>
+    <mat-tab-group [(selectedIndex)]="tabSelectedIndex">
       <mat-tab label="File Input">
         <div style="padding: 5px;">
           <div>Choose file containing vector (.geojson)</div>
-          <input id="geojson-file" type="file">
+          <input id="geojson-file" type="file" (change)="onFileChanged($event)">
         </div>
       </mat-tab>
       <mat-tab label="Text Input">

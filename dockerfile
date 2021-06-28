@@ -67,6 +67,12 @@ COPY Pipfile .
 COPY Pipfile.lock .
 RUN PIPENV_VENV_IN_PROJECT=1 pipenv install --deploy
 
+FROM node:11.4.0-alpine as builder
+COPY . /app
+WORKDIR /app/ui
+RUN npm install
+RUN npm run build -- --output-path=./dist/crs-app
+
 FROM base AS runtime
 
 # Copy virtual env from python-deps stage
@@ -78,7 +84,6 @@ ENV PATH="/.venv/bin:$PATH"
 # WORKDIR /home/appuser
 # USER appuser
 
-COPY . /app
 WORKDIR /app
 EXPOSE 5000
 ENTRYPOINT [ "python" ]
