@@ -5,4 +5,4 @@ def test(c):
     """
     Run tests
     """
-    c.run("python -m unittest discover")
+    c.run("pytest")

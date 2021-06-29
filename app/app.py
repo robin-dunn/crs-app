@@ -1,19 +1,20 @@
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS, cross_origin
 import passlib.hash
-import pyproj
 import geojson
 import datetime
 import jwt
 import sqlite3
 import os
 import os.path
+from projtools import reproject
 
 app = Flask(__name__)
 cors = CORS(app)
 
-app.config['CORS_HEADERS'] = 'Content-Type'
-app.config['SECRET_KEY']='004f2af45d3a4e161a7dd2d17fdae47f'
+app.config["CORS_HEADERS"] = "Content-Type"
+app.config["AUTH_ISSUER"] = "GSI-CRS-APP"
+app.config["SECRET_KEY"] = "004f2af45d3a4e161a7dd2d17fdae47f"
 
 # There's username and passwords already in db.sqlite:
 #   user1 / password1
@@ -28,14 +29,28 @@ def encrypt_password(password: str) -> str:
 def verify_password(password: str, encypted_password: str) -> str:
   return passlib.hash.pbkdf2_sha256.verify(password, encypted_password)
 
-def check_auth(request):
+def decode_auth_token(request):
   try:
     authHeader = request.headers.get('Authorization')
     authToken = authHeader.split()[1]
     decodedToken = jwt.decode(authToken, app.config["SECRET_KEY"], "HS256")
+    if (decodedToken["iss"].lower() != app.config["AUTH_ISSUER"].lower()):
+      return False
     return decodedToken
   except jwt.ExpiredSignatureError:
     return False
+
+def get_projections(user_id):
+  conn = get_db_connection()
+  cur = conn.cursor()
+  cur.execute("""
+  select crs.epsg_code
+  from
+  user join user_crs on user.user_id = user_crs.user_id
+  join crs on crs.crs_id = user_crs.crs_id
+  where user.user_id = ?
+  """, [user_id])
+  return list(map(lambda item: item[0], cur.fetchall()))
 
 @app.route('/', defaults={'path': ''}, methods=["GET"])
 @app.route('/<string:path>', methods=["GET"])
@@ -60,11 +75,11 @@ def login():
     return {"message": "Invalid username or password"}, 401
 
   token = jwt.encode({
-    "iss" : "GSI-CRS-APP",
+    "iss" : app.config["AUTH_ISSUER"],
     "iat" : datetime.datetime.utcnow(),
     "exp" : datetime.datetime.utcnow() + datetime.timedelta(minutes=45),
     "sub" : user_row[0] },
-    app.config['SECRET_KEY'],
+    app.config["SECRET_KEY"],
     "HS256")
   return jsonify(access_token=token)
 
@@ -72,86 +87,44 @@ def login():
 @app.route('/projections', methods = ["GET"])
 @cross_origin("*")
 def projections():
-  decodedToken = check_auth(request)
+  decodedToken = decode_auth_token(request)
   if (decodedToken == False): return jsonify({'message':'Unauthorised'}), 401
-  
-  conn = get_db_connection()
-  cur = conn.cursor()
-  cur.execute("""
-  select crs.epsg_code
-  from
-  user join user_crs on user.user_id = user_crs.user_id
-  join crs on crs.crs_id = user_crs.crs_id
-  where user.user_id = ?
-  """, [decodedToken['sub']])
-  items = map(lambda item: item[0], cur.fetchall())
-  return jsonify(list(items))
+  return jsonify(get_projections(decodedToken["sub"]))
 
 
 @app.route('/vector/reproject/json', methods=["POST"])
 def vector_reproject_json():
-  decodedToken = check_auth(request)
+  decodedToken = decode_auth_token(request)
   if (decodedToken == False): return jsonify({'message':'Unauthorised'}), 401
-
   requestBody = request.get_json()
   target_crs = requestBody["targetProjection"]
-  geometry = geojson.loads(geojson.dumps(requestBody["geojson"]))
 
+  allowed_projections = get_projections(decodedToken["sub"])
+  if target_crs not in allowed_projections:
+    return jsonify({'message':'Target coordinate CRS not allowed for this user.'}), 403
+
+  geometry = geojson.loads(geojson.dumps(requestBody["geojson"]))
   source_crs = geometry['crs']['properties']['name']
 
-  transformer = pyproj.Transformer.from_crs(
-    source_crs,
-    target_crs,
-    always_xy=True,
-  )
-
-  reprojected = {
-    **geojson.utils.map_tuples(
-      lambda c: transformer.transform(c[0], c[1]),
-      geometry,
-    ),
-    **{
-      "crs": {
-        "type": "name",
-        "properties": {
-          "name": target_crs
-        }
-      }
-    }
-  }
-  return reprojected
+  return reproject(geometry, source_crs, target_crs)
 
 
 @app.route('/vector/reproject/file', methods=["POST"])
 def vector_reproject_file():
-  decodedToken = check_auth(request)
+  decodedToken = decode_auth_token(request)
   if (decodedToken == False): return jsonify({'message':'Unauthorised'}), 401
 
-  geometry = geojson.load(request.files['file'])
   target_crs = request.form.get("targetProjection")
+
+  allowed_projections = get_projections(decodedToken["sub"])
+  if target_crs not in allowed_projections:
+    return jsonify({'message':'Target coordinate CRS not allowed for this user.'}), 403
+
+  geometry = geojson.load(request.files['file'])
   source_crs = geometry['crs']['properties']['name']
 
-  transformer = pyproj.Transformer.from_crs(
-    source_crs,
-    target_crs,
-    always_xy=True,
-  )
+  return reproject(geometry, source_crs, target_crs)
 
-  reprojected = {
-    **geojson.utils.map_tuples(
-      lambda c: transformer.transform(c[0], c[1]),
-      geometry,
-    ),
-    **{
-      "crs": {
-        "type": "name",
-        "properties": {
-          "name": target_crs
-        }
-      }
-    }
-  }
-  return reprojected
 
 if __name__ == '__main__':
   # Bind on all interfaces so that we can easily
