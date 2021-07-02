@@ -45,8 +45,7 @@
 ##################################################################
 # The above commmented out code is intended to setup the PROJ
 # dependencies, however this fails with an auto.sh file not found.
-# The docker image may still run without the above, so not sure
-# if it's really necessary.
+# The docker image may still run without the above.
 ##################################################################
 
 FROM python:3.9.4 as base
@@ -67,19 +66,23 @@ COPY Pipfile .
 COPY Pipfile.lock .
 RUN PIPENV_VENV_IN_PROJECT=1 pipenv install --deploy
 
-FROM node:11.4.0-alpine as builder
-COPY . /app
-WORKDIR /app/ui
+FROM node:12.22.1 as builder
+COPY . .
+WORKDIR /ui
 RUN npm install
 RUN npm run build -- --output-path=./dist/crs-app
 
 FROM base AS runtime
 
 # Copy virtual env from python-deps stage
+WORKDIR /
+COPY --from=builder db.sqlite db.sqlite
+COPY --from=builder /app /app
+COPY --from=builder /ui/dist/crs-app /ui/dist/crs-app
 COPY --from=python-deps /.venv /.venv
 ENV PATH="/.venv/bin:$PATH"
 
-# Create and switch to a new user
+# TODO: create a user to run as, rather than root user.
 # RUN useradd --create-home appuser
 # WORKDIR /home/appuser
 # USER appuser
@@ -87,4 +90,4 @@ ENV PATH="/.venv/bin:$PATH"
 WORKDIR /app
 EXPOSE 5000
 ENTRYPOINT [ "python" ]
-CMD [ "app/app.py" ]
+CMD [ "app.py" ]

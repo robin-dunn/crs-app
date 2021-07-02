@@ -21,7 +21,9 @@ app.config["SECRET_KEY"] = "004f2af45d3a4e161a7dd2d17fdae47f"
 #   user2 / password2
 
 def get_db_connection():
-  return sqlite3.connect(os.path.dirname(__file__) + '/../db.sqlite')
+  db_file_path = os.path.dirname(__file__) + '/../db.sqlite'
+  print("db_file_path", db_file_path)
+  return sqlite3.connect(db_file_path)
 
 def encrypt_password(password: str) -> str:
   return passlib.hash.pbkdf2_sha256.hash(password)
